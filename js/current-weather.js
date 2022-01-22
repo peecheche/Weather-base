@@ -1,0 +1,83 @@
+// import weather from '../data/current-weather.js'
+import {formatDate, formatTemp} from '../utils/format-data.js' 
+import {weatherConditionsCodes} from '../js/constants.js'
+import {getLatLon} from '../js/geolocation.js'
+import {getCurrentWeather} from './services/weather.js'
+
+function setCurrentCity($el, city) {
+    $el.textContent = city
+}
+
+function setCurrentDate($el) {
+    const date = new Date()
+    const formattedDate = formatDate(date)
+    $el.textContent = formattedDate
+}
+
+function setCurrentTemp($el, temp) {
+    $el.textContent = formatTemp(temp)
+}
+
+function solarStatus(sunsetTime, sunriseTime){
+    const currentHours = new Date().getHours()
+    const sunsetHours = sunsetTime.getHours()
+    const sunriseHours = sunriseTime.getHours()
+
+    if(currentHours > sunsetHours || currentHours < sunriseHours){
+        return 'night'
+    }
+    return'morning'
+    
+}
+
+function setBackground($el, conditionCode, solarStatus){
+    const weatherType = weatherConditionsCodes[conditionCode]
+    const size =  window.matchMedia('(-webkit-min-device-pixel-ratio: 2)').matches ? '@2x' : ''
+    $el.style.backgroundImage = `url(./images/${solarStatus}-${weatherType}${size}.jpg)`
+}
+
+function showCurrentWeather($app, $loader) {
+    $app.hidden = false
+    $loader.hidden = true
+}
+
+function configCurrentWeather(weather) {
+    const $app = document.querySelector('#app')
+    const $loading = document.querySelector('#loading')
+    //loader
+    showCurrentWeather($app, $loading)
+    //date
+    const $currentWeatherDate= document.querySelector('#current-weather-date')//esta funcion cambia el elemento
+    setCurrentDate($currentWeatherDate)
+
+    //city
+    const $currentWeatherCity= document.querySelector('#current-weather-city')//esta funcion cambia el elemento
+    //2. Aqui creamos const para ciudad.
+    const city = weather.name // we use it on function call
+    setCurrentCity($currentWeatherCity, city)
+    //$currentWeatherCity.textContent = weather.name  
+    //1.  From this we go and create a function for better visual. ( go 2 )
+    
+
+    //temp
+    const $currentWeatherTemp= document.querySelector('#current-weather-temp')//esta funcion cambia el elemento
+    const temp = weather.main.temp
+    setCurrentTemp($currentWeatherTemp, temp)
+
+    //background
+    const sunriseTime = new Date(weather.sys.sunrise * 1000)
+    const sunsetTime = new Date(weather.sys.sunset * 1000)
+    // const $app = document.querySelector('#app')
+    const conditionCode = String(weather.weather[0].id).charAt(0)
+    setBackground($app, conditionCode, solarStatus(sunriseTime, sunsetTime))
+}
+
+export default async function currentWeather() {
+    const { lat, lon, isError} = await getLatLon()
+    if(isError) return console.log("We could not find you!")
+    // console.log(lat, lon)
+
+    const {isError: currentWeatherError, data: weather} = await getCurrentWeather(lat, lon)
+    if(currentWeatherError) return console.log("We could not get the data for the weather")
+    configCurrentWeather(weather)
+} 
